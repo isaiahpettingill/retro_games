@@ -1,0 +1,1 @@
+/* The course check does not call any Game Boy Color video functions. */
