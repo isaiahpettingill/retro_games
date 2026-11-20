@@ -1,6 +1,11 @@
 #include "game.h"
 #include <string.h>
+#define route timed_route
 #include "course.inc"
+#undef route
+const Ledge *route=timed_route;
+uint8_t route_limit=LAST,hard_mode,hard_tier;
+uint32_t hard_height;
 
 const char * const zone_names[] = {"BASE CAMP","KHUMBU ICEFALL","WESTERN CWM","LHOTSE FACE","YELLOW BAND","SOUTH COL","SOUTH SUMMIT","SUMMIT RIDGE"};
 uint8_t zone,ground,nearby,wing,tumble,settled,facing,frame,camp,grace;
@@ -10,6 +15,74 @@ int8_t vx,vy,wind;
 uint16_t falls;
 static int16_t takeoff;
 static uint8_t frac,coyote,buffer,flap_queued,rag_left,spin_clock,impact,immunity,breaking;
+
+/* Recycle the route below the camera. Keep the physics coordinates small. */
+#define HARD_LEDGES 40u
+#define RECYCLE 16u
+static Ledge hard_route[HARD_LEDGES];
+static uint16_t rng,scroll_ticks;
+static uint8_t scroll_fraction;
+static uint32_t height_base;
+
+static uint8_t random_byte(void){
+    rng^=rng<<7;rng^=rng>>9;rng^=rng<<8;
+    return (uint8_t)rng;
+}
+static void generate_ledges(uint8_t first){
+    for(uint8_t i=first;i<HARD_LEDGES;++i){
+        const Ledge *below=&hard_route[i-1];
+        Ledge *next=&hard_route[i];
+        uint8_t roll=random_byte();
+        uint32_t altitude=height_base+below->h;
+        uint8_t tier=altitude>=3150u?7u:(uint8_t)(altitude/450u);
+        uint8_t rise=24+(roll&7u)+tier;
+        if(tier>=3 && (roll>>3)<tier*2u)rise=43+(random_byte()&3u);
+        uint8_t offset=15+(random_byte()&15u)+tier;
+        int16_t center=below->x+below->width*4u;
+        if((random_byte()&1u) ? center<106 : center<54)center+=offset;
+        else center-=offset;
+        if(center<36)center=36;
+        if(center>124)center=124;
+        next->width=5+(tier<3);
+        next->x=(uint8_t)(center-next->width*4u);
+        next->h=below->h+rise;
+        next->spike=0;
+        next->phase=random_byte();
+        roll=random_byte()&31u;
+        next->kind=ROCK;
+        if(roll<tier*3u+3u){
+            next->kind=ICE;
+            if(tier>=2 && below->kind==ROCK && offset<=29 && roll&1u)next->kind=GLIDER;
+            if(tier>=3 && roll%3u==0)next->kind=FRAGILE;
+        }
+    }
+}
+static void recycle_ledges(void){
+    int16_t offset=hard_route[RECYCLE].h;
+    memmove(hard_route,hard_route+RECYCLE,(HARD_LEDGES-RECYCLE)*sizeof(Ledge));
+    memmove(crumble,crumble+RECYCLE,HARD_LEDGES-RECYCLE);
+    memset(crumble+HARD_LEDGES-RECYCLE,0,RECYCLE);
+    breaking=0;
+    for(uint8_t i=0;i<HARD_LEDGES-RECYCLE;++i){
+        hard_route[i].h-=offset;
+        if(crumble[i])++breaking;
+    }
+    height_base+=offset;h-=offset;cam-=offset;takeoff-=offset;
+    nearby-=RECYCLE;
+    if(ground!=NONE)ground-=RECYCLE;
+    generate_ledges(HARD_LEDGES-RECYCLE);
+}
+static void hard_camera(void){
+    if(scroll_ticks<70u)++scroll_ticks;
+    else{
+        uint16_t step=(uint16_t)scroll_fraction+24u+hard_tier*12u;
+        cam+=step>>8;
+        scroll_fraction=(uint8_t)step;
+    }
+    if(h-cam>57)cam=h-57;
+    if(h-cam<=-16){finish();return;}
+    if(nearby>=29u)recycle_ledges();
+}
 
 static int8_t slide_at(uint8_t t) {
     t>>=1; t&=63u;
@@ -42,10 +115,11 @@ static void horizontal(void) {
     if(x16>2464){x16=2464;vx=tumble?(-vx/2):0;}
 }
 static void track(void) {
-    while(nearby<LAST && h>=route[nearby+1].h)++nearby;
+    while(nearby<route_limit && h>=route[nearby+1].h)++nearby;
     while(nearby && h<route[nearby].h)--nearby;
 }
 void reset_at(uint8_t mark) {
+    hard_mode=0;route=timed_route;route_limit=LAST;
     uint8_t idx=mark*SECTION;
     memset(crumble,0,sizeof(crumble));breaking=0;
     h=route[idx].h; ground=nearby=idx; zone=mark;
@@ -53,6 +127,15 @@ void reset_at(uint8_t mark) {
     wing=1;facing=1;cam=(h>45)?h-45:0;
     takeoff=h;vx=vy=0;tumble=settled=frac=impact=spin=wind=buffer=0;
     recall_count=boost_anim=flap_queued=0;coyote=6;immunity=64;notice=75;
+}
+void reset_hard(uint16_t seed){
+    reset_at(0);
+    route=hard_route;route_limit=HARD_LEDGES-1;hard_mode=1;
+    rng=seed?seed:1;
+    hard_height=height_base=0;scroll_ticks=scroll_fraction=hard_tier=0;
+    hard_route[0]=timed_route[0];
+    generate_ledges(1);
+    x16=80<<4;
 }
 static void ragdoll(int8_t kick) {
     if(tumble)return;
@@ -65,6 +148,15 @@ static void ragdoll(int8_t kick) {
 static void arrive(uint8_t i) {
     ground=i;h=route[i].h;frac=0;vy=0;wing=1;flap_queued=0;coyote=6;takeoff=h;
     if(route[i].kind==FRAGILE && !crumble[i]){crumble[i]=174;++breaking;}
+    if(hard_mode){
+        uint32_t landed=height_base+h;
+        if(landed>hard_height){
+            hard_height=landed;
+            hard_tier=landed>=3150u?7u:(uint8_t)(landed/450u);
+            zone=landed>=560u?1u+(uint8_t)((landed/560u-1u)%7u):0u;
+        }
+        return;
+    }
     if(i==LAST){finish();return;}
     if(i && route[i].kind==CAMP && i/SECTION>camp) {
         camp=i/SECTION;commit_save();notice=100;sound(5);
@@ -87,6 +179,10 @@ static void rag_floor(uint8_t i) {
 static void apply_wind(void) {
     uint8_t f=frame;
     wind=0;
+    if(hard_mode){
+        if(hard_tier && (f&127u)<(uint8_t)(12u+hard_tier*10u))wind=(f&128u)?-1:1;
+        return;
+    }
     if(zone<3 || (zone==4 && (nearby&3u)==0))return;
     if(zone==3 && (nearby&3u)<2)return;
     if((f&127u)<49u)wind=(f&128u)?-1:1;
@@ -99,8 +195,8 @@ void play_step(uint8_t held,uint8_t pressed) {
     if(notice)--notice;
     if(immunity)--immunity;
     if(boost_anim)--boost_anim;
-    if(breaking)for(i=1;i<=LAST;i++)if(crumble[i] && !--crumble[i])--breaking;
-    if(held&J_SELECT) {
+    if(breaking)for(i=1;i<=route_limit;i++)if(crumble[i] && !--crumble[i])--breaking;
+    if(!hard_mode && (held&J_SELECT)) {
         if(recall_count<48 && ++recall_count==48) {
             reset_at(camp);recall_count=49;sound(5);return;
         }
@@ -162,11 +258,11 @@ void play_step(uint8_t held,uint8_t pressed) {
         if(vy> -76)vy-=3;
         delta=(int16_t)frac+vy;h+=delta>>4;frac=(uint8_t)delta&15u;
         if(coyote)--coyote;
-        if(!tumble && vy<0 && h<takeoff-10)
+        if(!hard_mode && !tumble && vy<0 && h<takeoff-10)
             ragdoll(vx>6?vx:(vx< -6?vx:(facing?14:-14)));
         track();
         if(vy<=0) {
-            hi=(nearby<LAST)?nearby+1:nearby;
+            hi=(nearby<route_limit)?nearby+1:nearby;
             lo=nearby?nearby-1:0;
             for(i=hi;;--i) {
                 if(route[i].h<=prev && route[i].h>=h && solid(i) && stands(i)){
@@ -177,9 +273,10 @@ void play_step(uint8_t held,uint8_t pressed) {
             }
         }
     }
-    if(h<0){if(tumble)rag_floor(0);else arrive(0);}
+    if(!hard_mode && h<0){if(tumble)rag_floor(0);else arrive(0);}
     if(game_mode!=PLAY)return;
     track();
+    if(hard_mode){hard_camera();return;}
     if(!tumble && !immunity) {
         lo=nearby>1?nearby-2:0;hi=(nearby+2<LAST)?nearby+2:LAST;
         for(i=lo;i<=hi;i++)if(route[i].spike && ((frame+route[i].phase)&127u)>=30u){

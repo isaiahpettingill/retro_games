@@ -13,6 +13,7 @@ static const uint16_t obj_pals[]={
  RGB(2,5,7),RGB(5,7,9),RGB(20,12,7),RGB(31,20,8), /* camp */
  RGB(2,5,7),RGB(5,9,13),RGB(16,24,24),RGB(31,31,27)};
 static uint8_t oam,loaded=NONE;
+static uint32_t last_status=UINT32_MAX;
 #define FONT_BASE 152u
 #define DUCK_FLIP 0x20u
 static uint8_t char_tile(char c) {
@@ -68,7 +69,7 @@ void activate_scene(uint8_t n) {
     else LCDC_REG=(LCDC_REG&0xa7u)|(n<8?0x10u:0x50u);
     set_bkg_palette(0,8,s->pal);loaded=n;
     move_bkg(0,0);SHOW_BKG;
-    if(n<8){HIDE_WIN;draw_world();SHOW_SPRITES;}
+    if(n<8){last_status=UINT32_MAX;window_attrs(1);draw_world();draw_status();SHOW_SPRITES;}
     else{uint8_t i;window_attrs(18);for(i=0;i<40;i++)hide_sprite(i);}
     if(!moving){DISPLAY_ON;}
 }
@@ -88,7 +89,7 @@ void draw_world(void) {
     obj(px-4,py-16,pose*6u+4u,1|flip);
     obj(px-8,py-16,left,flip);obj(px,py-16,right,flip);
     first=nearby>4?nearby-4:1;if(first<1)first=1;
-    last=(nearby+6<LAST)?nearby+6:LAST;
+    last=(nearby+6<route_limit)?nearby+6:route_limit;
     for(i=first;i<=last;i++){
         int16_t lx;uint8_t kind;
         sy=120+cam-route[i].h;if(sy< -15 || sy>193)continue;
@@ -114,24 +115,41 @@ void draw_world(void) {
     }
     for(i=oam;i<40;i++)hide_sprite(i);
     if(!zone)move_bkg(0,cam<32?48-cam:16);
+    else if(hard_mode)move_bkg(0,16);
     else{
         int16_t dy=h-camp_alt[zone];
         move_bkg(0,dy<0?48:(dy>=512?16:48-(dy>>4)));
     }
 }
-static void time_row(uint8_t row,const char *label,uint32_t frames){
-    uint32_t seconds=frames/60u;
-    uint16_t minutes=seconds/60u;
+static void time_row(uint8_t row,const char *label,uint32_t seconds){
+    uint32_t minutes=seconds/60u;
     uint8_t remainder=seconds%60u;
-    char time[10]="00000:00";
-    if(!frames){menu_action(row,label,"--:--");return;}
-    uint8_t i=5;
+    char time[12]="00000000:00";
+    uint8_t i=8;
     do{time[--i]='0'+minutes%10u;minutes/=10u;}while(minutes);
-    if(i==4)--i;
-    time[6]='0'+remainder/10u;time[7]='0'+remainder%10u;
+    if(i==7)--i;
+    time[9]='0'+remainder/10u;time[10]='0'+remainder%10u;
     menu_action(row,label,time+i);
 }
+static void height_row(uint8_t row,const char *label,uint32_t height){
+    char value[12];
+    uint8_t i=10;
+    value[11]='\0';value[10]='M';
+    do{value[--i]='0'+height%10u;height/=10u;}while(height);
+    menu_action(row,label,value+i);
+}
+void draw_status(void){
+    uint32_t value=hard_mode?hard_height:run_frames/60u;
+    if(value==last_status)return;
+    last_status=value;
+    if(alternate_map)LCDC_REG|=0x40;else LCDC_REG&=0xbf;
+    move_win(7,136);
+    if(hard_mode)height_row(0,"HEIGHT",value);
+    else time_row(0,"TIME",value);
+    SHOW_WIN;
+}
 void panel(uint8_t kind) {
+    last_status=UINT32_MAX;
     if(loaded<8){
         if(alternate_map)LCDC_REG&=0xbf;else LCDC_REG|=0x40;
         window_attrs(8);
@@ -139,22 +157,23 @@ void panel(uint8_t kind) {
     switch(kind){
     case TITLE:
         move_win(7,120);
-        if(has_save){
-            menu_action(0,"START","CONTINUE");
-            win_row(1,"",0);
-            menu_action(2,"B","NEW CLIMB");
-            if(best_frames)time_row(1,"BEST",best_frames);
-        }else{
-            win_row(0,"",0);
-            win_row(1,"    PRESS START",1);
-            win_row(2,"",0);
-        }
+        menu_action(0,"START",has_save && camp?"CONTINUE":"TIMED");
+        menu_action(1,"SELECT","HARD");
+        if(has_save)menu_action(2,"B","NEW TIMED");
+        else menu_action(2,"A","GUIDE");
         break;
     case WIN:
         move_win(7,120);
-        time_row(0,"TIME",run_frames);
-        time_row(1,"BEST",best_frames);
-        win_row(2,"    START  TITLE",1);
+        if(hard_mode){
+            height_row(0,"HEIGHT",hard_height);
+            height_row(1,"BEST",hard_best);
+            win_row(2," START MENU SEL TRY",1);
+        }else{
+            time_row(0,"TIME",run_frames/60u);
+            if(best_frames)time_row(1,"BEST",best_frames/60u);
+            else menu_action(1,"BEST","--:--");
+            win_row(2,"    START  TITLE",1);
+        }
         break;
     case GUIDE:
         move_win(7,80);
@@ -162,7 +181,7 @@ void panel(uint8_t kind) {
         menu_action(1,"D-PAD","MOVE");
         menu_action(2,"A","JUMP");
         menu_action(3,"B","ONE AIR FLAP");
-        win_row(4," HOLD SELECT  CAMP",0);
+        win_row(4,hard_mode?" STAY ABOVE SCROLL":" HOLD SELECT  CAMP",0);
         win_row(5,"",0);
         menu_action(6,"B","BACK");
         win_row(7,"",0);
@@ -172,7 +191,7 @@ void panel(uint8_t kind) {
         win_row(0,"",0);
         menu_action(1,"A","RESUME");
         menu_action(2,"B","GUIDE");
-        menu_action(3,"SELECT","RECALL CAMP");
+        menu_action(3,"SELECT",hard_mode?"END RUN":"RECALL CAMP");
         menu_action(4,"UP",muted?"SOUND OFF":"SOUND ON");
         win_row(5,"",0);
         break;

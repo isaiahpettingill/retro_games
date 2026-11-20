@@ -4,7 +4,7 @@ Climb Mount Everest as a duck with one strong wingbeat. The continuous route has
 
 ## Play
 
-Open `Everest-Little-Wings.gbc` in a Game Boy Color emulator, or copy the ROM to a compatible flash cartridge. Select Game Boy Color mode if the emulator asks for a system. Press **Start** on the title screen to climb. Press **A** there to open the field guide.
+Open `Everest-Little-Wings.gbc` in a Game Boy Color emulator, or copy the ROM to a compatible flash cartridge. Select Game Boy Color mode if the emulator asks for a system. Press **Start** for Timed mode or **Select** for Hard mode. Press **A** on the title screen to open the field guide.
 
 | Control | Action |
 | --- | --- |
@@ -12,11 +12,11 @@ Open `Everest-Little-Wings.gbc` in a Game Boy Color emulator, or copy the ROM to
 | A | Jump. You have a short grace period after stepping off an edge. |
 | B in the air | Use one wingbeat. A quick tap after takeoff is stored until the duck can gain height. For maximum height, flap near the top of your jump. A second press of A can also flap. |
 | Start | Pause or resume. |
-| Hold Select | Return to the highest camp flag you have landed on. You can do this during a tumble. |
-| Select while paused | Return to camp immediately. |
+| Hold Select in Timed | Return to the highest camp flag you have landed on. You can do this during a tumble. |
+| Select while paused | Return to camp in Timed mode or end a Hard run and save its result. |
 | Up while paused | Switch sound on or off. |
 
-## On the mountain
+## On the mountain in Timed mode
 
 Ice has little traction. Green ledges drift sideways and carry the duck. Brown shale cracks, drops away, and forms again. A flashing mark warns of a falling icicle. At the first one, jump from the middle or left side of the rock onto the wide ice shelf above. A normal jump clears it. Wind streaks show the gust direction.
 
@@ -26,7 +26,21 @@ Land on a flag to save that camp. **Start** on the title screen continues from t
 
 ## Climb time
 
-The summit screen shows the current session time and the saved best time. Time runs during play, including falls and camp recall, and stops while paused. A best time must start from Base Camp and reach the summit in one session. To attempt a new record after saving at a higher camp, press **B** on the title screen and confirm a new climb. Starting a new climb keeps the best time.
+The bottom of the play screen shows your current time. The summit screen shows your time and saved best. Time runs during play, including falls and camp recall, and stops while paused. A best time must start from Base Camp and reach the summit in one session. To attempt a new record after saving at a higher camp, press **B** on the title screen and confirm a new climb. Starting a new climb keeps the best time.
+
+## Hard mode
+
+The camera rises on its own. Catch another ledge before the duck drops below the screen. Each run generates a new route. Higher sections have faster scrolling, more frequent gusts, and more slippery, moving, and crumbling ledges. Some jumps need the wingbeat. The bottom of the screen shows your highest landing above base, in game meters. The result screen saves your personal height record separately from the Timed record.
+
+## Art and music
+
+The ascent takes the scenery from dawn through midday, sunset, and moonlight. Hard mode repeats the sky cycle as you climb. The editable [duck sprite](art/duck.aseprite) has separate body and scarf layers and tags for idle, walk, jump, flap, and tumble.
+
+The soundtrack cycles through three new Game Boy arrangements of traditional melodies. Hard mode increases their tempo as the camera speeds up.
+
+- [The Bear Went Over the Mountain](https://abcnotation.com/tunePage?a=back.numachi.com%3A8000%2Fdtrad%2Fabc_dtrad.tar.gz%2Fabc_dtrad%2FJOLLGOOD%2F0000), using the traditional “For He's a Jolly Good Fellow” air.
+- [Ducks on the Millpond](https://abcnotation.com/tunePage?a=tunearch.org%2Fwiki%2FDucks_on_the_Millpond.no-ext%2F0002), a Virginia fiddle reel.
+- [Soldier's Joy](https://abcnotation.com/tunePage?a=trillian.mit.edu%2F~jc%2Fmusic%2Fbook%2FSCD%2FBook02%2F0012), a traditional fiddle tune.
 
 ## Build from source
 
@@ -43,12 +57,15 @@ The C sources in `art/` contain the compiled tile graphics. A normal build uses 
 ```sh
 uv run --with pillow --with numpy python tools/art.py
 uv run python tools/course.py
+uv run --with pillow --with numpy python tools/export_duck.py
 make GBDK_HOME=/path/to/gbdk
 ```
 
 ## Check the course
 
 Run `make check-route` with a native C compiler to test the cartridge physics. It checks each of the 112 jumps from three takeoff positions at every phase of the 256-tick obstacle cycle. The check requires a five-tick launch window, a landing inside the ledge, and a wait short enough for crumbling shale.
+
+Run `make check-hard` to exercise 64 generated routes through the highest difficulty, including camera losses and route recycling.
 
 After a cartridge build, replay the recorded controller inputs with this command. Three upper ledges require a wingbeat. Tap **B** near the top of those jumps.
 

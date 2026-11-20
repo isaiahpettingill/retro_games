@@ -1,3 +1,4 @@
 /build/
 *.sav
 *.ram
+__pycache__/

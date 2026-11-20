@@ -10,7 +10,11 @@
 enum { ROCK, ICE, FRAGILE, GLIDER, CAMP };
 enum { TITLE, GUIDE, PLAY, PAUSE, WIN, CONFIRM };
 typedef struct { int16_t h; uint8_t x,width,kind,phase,spike; } Ledge;
-extern const Ledge route[];
+extern const Ledge *route;
+extern uint8_t route_limit,hard_mode,hard_tier;
+extern uint32_t hard_height,hard_best;
+void reset_hard(uint16_t seed);
+void draw_status(void);
 extern const int16_t camp_alt[];
 extern const char * const zone_names[];
 extern uint8_t game_mode,zone,ground,nearby,wing,tumble,settled,facing,frame,camp,muted,has_save;

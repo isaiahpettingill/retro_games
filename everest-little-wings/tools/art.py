@@ -48,15 +48,16 @@ def bits(a):
             out.append(sum(((int(p)>>bit)&1)<<(7-i) for i,p in enumerate(row)))
     return bytes(out)
 # Colors run from near-black through the lit snow. Two warm colors paint the expedition gear.
+# Base at dawn, then morning, noon, afternoon, sunset, twilight and moonlight.
 THEMES=[
- ['122f39','224953','38616a','567f80','80a399','aec9ae','d8dfb5','f7df9a','da9367','eeba78'],
- ['16283e','2b4863','46667d','63869a','89a7b0','b5c7cd','dde1d1','fff1bc','dc9371','f6bf86'],
- ['183844','285664','3f7882','639897','89b2ad','b5cfb8','dde3bf','f9e6a9','ce906c','efb976'],
- ['252e4c','404461','605b79','83778b','aaa0a1','c8b5ab','ead3b3','ffe7b3','dc8c76','f4ad84'],
- ['142b44','253f5a','3b6076','588197','80a0aa','a5c1be','d5daca','f4dda2','c57d70','e8a478'],
- ['1f2444','363951','4d506a','6a6c86','8e899c','aea7b0','cec5bd','f3d5ad','b77673','d99886'],
- ['182538','283953','40536a','5a7088','8092a5','a5afbb','cbc9cb','eadbc9','bb8378','dca389'],
- ['272442','473957','68516b','906d7a','b39391','d6b4a1','efd0a9','ffe6b1','df8a69','f4af78']]
+ ['212741','493e59','77576b','aa6a71','d59588','e8bba7','ffe1bb','fff4bd','d8816d','ffba86'],
+ ['183748','2f5164','4b7385','6e9aaf','9ec3c9','c1d8d4','ebe8d1','fff1ba','d99372','f6c28a'],
+ ['133245','255169','3c738d','5e9ab8','8ac5d9','b4dbe3','e2eff0','fff4c6','ce906c','efb976'],
+ ['19374e','335574','547a9b','78a3bf','a4cad9','c4dbe3','ebf1ef','fff8dc','d18b76','f4b784'],
+ ['243450','43536d','696983','928394','b2a6a9','d2c0bb','f1ddd0','ffeead','c57d70','e8a478'],
+ ['252340','493552','714761','985b70','bd777d','dda198','f2c4ac','ffe0a0','d37668','efa27c'],
+ ['1b203b','2e3455','4a4d75','555a86','736e97','9889a7','bbb9ce','eae4d4','ba7d85','dfa28c'],
+ ['11182f','202c4a','334565','475c82','5b7493','8c9db8','c0d1de','edf4df','bb8378','dca389']]
 TITLE=['102c38','1c414a','315c61','507c7b','7fa5a0','a9c6af','dce2bb','ffe7a4','d77f59','f5ad63']
 def ridge(points, rng, rough):
     line=[]
@@ -77,18 +78,25 @@ def landscape(zone, title=False, end=False):
     sky=H//3
     for x in range(0,160,2):
         d.point((x,sky),cs[4])
-    sx=((37 if end else 128) if title else [123,28,124,36,111,30,127,110][zone]); sy=(59 if title else 52+zone%3*4)
-    r=13 if title else 12
+    sx=(37 if end else 128) if title else [25,42,64,86,108,136,121,94][zone]
+    sy=59 if title else [68,49,34,29,43,66,44,33][zone]
+    r=13 if title else 11
     d.ellipse((sx-r,sy-r,sx+r,sy+r),cs[7])
-    for strip in (6,10):
-        d.line((sx-r,sy+strip,sx+r,sy+strip),cs[4])
+    if zone>=6 and not title:
+        d.ellipse((sx-r+5,sy-r-2,sx+r+5,sy+r-2),cs[3])
+        for _ in range(21):
+            x,y=rng.randrange(3,157),rng.randrange(16,53)
+            if abs(x-sx)>15:d.point((x,y),cs[7 if rng.randrange(4)==0 else 5])
+    else:
+        for strip in (6,10):
+            d.line((sx-r,sy+strip,sx+r,sy+strip),cs[4])
     for j in range(6):
         x=rng.randrange(-15,153); y=rng.randrange(38,78)
         d.line((x,y,x+rng.randrange(7,29),y),cs[5])
         d.line((x+5,y-1,x+13,y-1),cs[5])
     # Distant silhouettes and individual sunlit snow faces.
     shift=0 if title else (zone*13)%33-16
-    base=94 if title else 110
+    base=94 if title else 102+zone*5
     for li,(dy,peak_col,dark_col) in enumerate([(-15,5,4),(0,6,3),(25,4,2)]):
         start=-45; pts=[(start,base+dy)]
         while start<180:
@@ -102,7 +110,7 @@ def landscape(zone, title=False, end=False):
             d.polygon(face,fill=cs[peak_col])
     # The massive asymmetric summit has a broken light face and two shadow spurs.
     px=(88 if title else 73+shift); py=(46 if title else [71,58,68,52,64,55,47,43][zone])
-    by=(113 if title else 146)
+    by=(113 if title else 143+zone*3)
     outline=[(px-71,by),(px-51,by-13),(px-43,by-15),(px-31,py+29),(px-23,py+25),(px-15,py+14),(px-10,py+13),(px,py),(px+6,py+7),(px+11,py+9),(px+19,py+22),(px+24,py+23),(px+41,py+45),(px+48,py+44),(px+67,by)]
     d.polygon(ridge(outline,rng,1.5)+[(px+69,H),(px-71,H)],fill=cs[3])
     lit=ridge(outline[:8],rng,1.4)+[(px-2,py+5),(px+1,py+9),(px-5,py+9),(px-3,py+13),(px-7,py+17),(px-7,py+23),(px-13,py+22),(px-20,py+34),(px-22,py+31),(px-32,py+44),(px-36,py+43),(px-54,by-2),(px-68,by)]
