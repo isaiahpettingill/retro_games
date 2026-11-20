@@ -6,7 +6,7 @@ import re
 from pyboy import PyBoy
 
 root = Path(__file__).resolve().parents[1]
-rom = root / "build/Everest-Little-Wings.gbc"
+rom = root / "build/Climb-Ducky-Climb.gbc"
 symbols = {
     name: int(address, 16)
     for name, address in re.findall(r"DEF _(\w+) 0x([0-9A-Fa-f]+)", rom.with_suffix(".noi").read_text())

@@ -2,4 +2,4 @@
 
 Original games for retro consoles.
 
-- [Everest: Little Wings](everest-little-wings) for Game Boy Color
+- [Climb, Ducky, Climb!](everest-little-wings) for Game Boy Color

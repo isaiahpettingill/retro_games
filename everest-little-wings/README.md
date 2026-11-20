@@ -1,10 +1,10 @@
-# Everest · Little Wings
+# Climb, Ducky, Climb!
 
 Climb Mount Everest as a duck with one strong wingbeat. The continuous route has 112 jumps in eight sections. Land on the summit flag to finish.
 
 ## Play
 
-Open `Everest-Little-Wings.gbc` in a Game Boy Color emulator, or copy the ROM to a compatible flash cartridge. Select Game Boy Color mode if the emulator asks for a system. Press **Start** for Timed mode or **Select** for Hard mode. Press **A** on the title screen to open the field guide.
+Open `Climb-Ducky-Climb.gbc` in a Game Boy Color emulator, or copy the ROM to a compatible flash cartridge. Select Game Boy Color mode if the emulator asks for a system. Press **Start** for Timed mode or **Select** for Hard mode. Press **A** on the title screen to open the field guide.
 
 | Control | Action |
 | --- | --- |
@@ -15,6 +15,8 @@ Open `Everest-Little-Wings.gbc` in a Game Boy Color emulator, or copy the ROM to
 | Hold Select in Timed | Return to the highest camp flag you have landed on. You can do this during a tumble. |
 | Select while paused | Return to camp in Timed mode or end a Hard run and save its result. |
 | Up while paused | Switch sound on or off. |
+
+Existing battery saves work with the renamed ROM. If your emulator names saves after ROM files, copy your save to the new ROM basename.
 
 ## On the mountain in Timed mode
 
@@ -50,14 +52,13 @@ Use GBDK-2020 4.4.0 and GNU Make. From this directory, run the following command
 make GBDK_HOME=/path/to/gbdk
 ```
 
-The build writes `build/Everest-Little-Wings.gbc`. It also writes a symbol file for the emulator check. The cartridge uses MBC5, a 256 KiB ROM, and 8 KiB of battery-backed RAM. Two save slots protect the last complete camp record if a write is interrupted.
+The build writes `build/Climb-Ducky-Climb.gbc`. It also writes a symbol file for the emulator check. The cartridge uses MBC5, a 256 KiB ROM, and 8 KiB of battery-backed RAM. Two save slots protect the last complete camp record if a write is interrupted.
 
 The C sources in `art/` contain the compiled tile graphics. A normal build uses these files directly. To edit the artwork or course, change the Python scripts in `tools/`, then regenerate the assets.
 
 ```sh
 uv run --with pillow --with numpy python tools/art.py
 uv run python tools/course.py
-uv run --with pillow --with numpy python tools/export_duck.py
 make GBDK_HOME=/path/to/gbdk
 ```
 

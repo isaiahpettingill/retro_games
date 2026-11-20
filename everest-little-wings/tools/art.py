@@ -11,6 +11,7 @@ OUT.mkdir(exist_ok=True)
 
 # A five-by-seven bitmap alphabet, used for all cartridge lettering.
 GLYPHS = {
+',':[0,0,0,0,0,4,8],
 'A':[14,17,17,31,17,17,17],'B':[30,17,17,30,17,17,30],'C':[14,17,16,16,16,17,14],
 'D':[28,18,17,17,17,18,28],'E':[31,16,16,30,16,16,31],'F':[31,16,16,30,16,16,16],
 'G':[14,17,16,23,17,17,15],'H':[17,17,17,31,17,17,17],'I':[14,4,4,4,4,4,14],
@@ -181,11 +182,12 @@ def landscape(zone, title=False, end=False):
             label(d,(9,6),'EVEREST EXPEDITION',cs[5])
             label(d,(8,17),'SUMMIT',cs[7],3,2)
         else:
-            label(d,(8,5),'LITTLE WINGS',cs[9],1,2)
-            label(d,(8,17),'EVEREST',cs[7],3,2)
+            label(d,(8,5),'CLIMB, DUCKY,',cs[7],2)
+            label(d,(47,22),'CLIMB!',cs[9],2)
         # A compact mountain survey mark.
-        d.line([(139,11),(144,4),(151,12),(139,12)],fill=cs[5])
-        d.line([(143,7),(145,8),(146,7)],fill=cs[5])
+        if end:
+            d.line([(139,11),(144,4),(151,12),(139,12)],fill=cs[5])
+            d.line([(143,7),(145,8),(146,7)],fill=cs[5])
         d.rectangle((0,120,159,143),cs[0])
     return im,cols
 def palettes(cols):
@@ -211,6 +213,14 @@ def compile_scene(name, im, cols, bank):
     (OUT/(name+'.c')).write_text(code)
     return name,len(patterns),im.height//8,bank
 # The scarf overlay has an independent palette. Rotate the head and feet around the body for tumbles.
+# Outline refinements from the edited Aseprite tumble frames, in (x, y) order.
+TUMBLE_OUTLINE = {
+    6: ((2, 6), (14, 6), (13, 8)),
+    8: ((9, 2), (2, 6), (4, 8), (7, 13), (9, 14)),
+    10: ((9, 2), (7, 4), (2, 7), (1, 9), (13, 9), (3, 11)),
+    12: ((6, 0), (8, 2), (6, 13)),
+}
+
 def duck_pixels(pose):
     pattern=[
     '................','........0000....','.......0cccc0...','......0cccccc0..',
@@ -233,6 +243,8 @@ def duck_pixels(pose):
     if pose>=5:
         a=duck_pixels(4 if pose%2 else 3)
         a=np.array(Image.fromarray(a).rotate(-45*(pose-5),resample=Image.Resampling.NEAREST,center=(8,8)))
+    for x, y in TUMBLE_OUTLINE.get(pose, ()):
+        a[y, x] = 1
     return a
 
 def sprites():
