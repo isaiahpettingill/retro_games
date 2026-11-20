@@ -176,7 +176,7 @@ def landscape(zone, title=False, end=False):
             d.line([(0,114),(10,109),(34,109),(40,112)],fill=cs[5])
         for y,row in enumerate(lay):
             for x,c in enumerate(row):
-                if c:d.rectangle((left+2*x,top+2*y,left+2*x+1,top+2*y+1),palette[int(c)])
+                if end and c:d.rectangle((left+2*x,top+2*y,left+2*x+1,top+2*y+1),palette[int(c)])
         d.rectangle((0,0,159,40),cs[0])
         if end:
             label(d,(9,6),'EVEREST EXPEDITION',cs[5])
@@ -247,6 +247,20 @@ def duck_pixels(pose):
         a[y, x] = 1
     return a
 
+def title_duck_tiles():
+    """Scale the idle body and scarf exactly, preserving the gameplay palette indices."""
+    idle = duck_pixels(0)
+    body = np.where(idle == 4, 1, idle)
+    scarf = np.where(idle[:, 4:12] == 4, 1, 0)
+    tiles = []
+    for layer in (body, scarf):
+        scaled = layer.repeat(2, axis=0).repeat(2, axis=1)
+        for y in range(0, 32, 16):
+            for x in range(0, scaled.shape[1], 8):
+                tiles.extend((bits(scaled[y:y+8, x:x+8]),
+                              bits(scaled[y+8:y+16, x:x+8])))
+    return tiles
+
 def sprites():
     art=[]; desc={}
     def col(name,a):
@@ -299,9 +313,9 @@ def main():
         hdr+=f'extern const unsigned char {name}_tiles[], {name}_map[], {name}_attr[], {name}_altmap[], {name}_altattr[];\nextern const unsigned short {name}_pals[];\n'
     hdr+='#define SCENE_TABLE { '+', '.join('{%d,%d,%d,%s_tiles,%s_map,%s_attr,%s_altmap,%s_altattr,%s_pals}'%(b,n,h,nm,nm,nm,nm,nm,nm) for nm,n,h,b in scene_info)+' }\n'
     atlas,symbols=sprites()
-    # Terrain and lettering use bank zero. All backdrops use bank one.
-    (OUT/'sprites.c').write_text('#pragma bank 11\n'+emit('sprite_tiles',b''.join(atlas)))
-    hdr+='extern const unsigned char sprite_tiles[];\n#define SPRITE_COUNT %d\n'%len(atlas)
+    # The title duck uses high tiles in bank one, above the backdrop.
+    (OUT/'sprites.c').write_text('#pragma bank 11\n'+emit('sprite_tiles',b''.join(atlas)) + emit('title_duck_tiles', b''.join(title_duck_tiles())))
+    hdr+='extern const unsigned char title_duck_tiles[];\nextern const unsigned char sprite_tiles[];\n#define SPRITE_COUNT %d\n'%len(atlas)
     for k,v in symbols.items():hdr+='#define TILE_'+k+' '+str(v)+'\n'
     font_order=' ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789+-./>!:'
     ft=[]

@@ -74,7 +74,6 @@ void commit_save(void) {
 void show_title(void) {
     game_mode = TITLE;
     activate_scene(8);
-    HIDE_SPRITES;
     panel(TITLE);
 }
 void finish(void) {

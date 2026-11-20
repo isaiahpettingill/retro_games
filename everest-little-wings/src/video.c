@@ -22,6 +22,8 @@ static uint8_t oam, loaded = NONE;
 static uint32_t last_status = UINT32_MAX;
 #define FONT_BASE 152u
 #define DUCK_FLIP 0x20u
+#define TITLE_DUCK_TILE 232u
+#define TITLE_DUCK_TILE_COUNT 24u
 static uint8_t char_tile(char c) {
     if (c >= 'A' && c <= 'Z')
         return 1 + c - 'A';
@@ -72,6 +74,8 @@ static void window_attrs(uint8_t rows) {
         set_win_tiles(0, i, 20, 1, attrs);
     VBK_REG = 0;
 }
+static void draw_title_duck(void);
+
 void activate_scene(uint8_t n) {
     const Scene *s = &scenes[n];
     uint8_t moving = (loaded < 8u && n < 8u);
@@ -106,6 +110,9 @@ void activate_scene(uint8_t n) {
         SWITCH_ROM(11);
         set_sprite_data(0, SPRITE_COUNT, sprite_tiles);
         set_sprite_data(FONT_BASE, FONT_COUNT * 2, font_tiles);
+        VBK_REG = 1;
+        set_sprite_data(TITLE_DUCK_TILE, TITLE_DUCK_TILE_COUNT, title_duck_tiles);
+        VBK_REG = 0;
         set_sprite_palette(0, 8, obj_pals);
         SPRITES_8x16;
         SWITCH_ROM(s->bank);
@@ -135,6 +142,10 @@ void activate_scene(uint8_t n) {
         window_attrs(18);
         for (i = 0; i < 40; i++)
             hide_sprite(i);
+        if (n == 8) {
+            draw_title_duck();
+            SHOW_SPRITES;
+        }
     }
     if (!moving) {
         DISPLAY_ON;
@@ -148,6 +159,21 @@ static void obj(int16_t x, int16_t y, uint8_t tile, uint8_t attr) {
     move_sprite(oam, (uint8_t)(x + 8), (uint8_t)(y + 16));
     ++oam;
 }
+static void draw_title_duck(void) {
+    oam = 0;
+    for (uint8_t row = 0; row < 2; ++row) {
+        /* Lower OAM indices put the scarf in front of the body. */
+        for (uint8_t column = 0; column < 2; ++column)
+            obj(16 + column * 8, 82 + row * 16,
+                TITLE_DUCK_TILE + 16 + row * 4 + column * 2, 0x08u | 1u);
+    }
+    for (uint8_t row = 0; row < 2; ++row) {
+        for (uint8_t column = 0; column < 4; ++column)
+            obj(8 + column * 8, 82 + row * 16,
+                TITLE_DUCK_TILE + row * 8 + column * 2, 0x08u);
+    }
+}
+
 void draw_world(void) {
     int16_t px = x16 >> 4, py = 120 + cam - h, sy;
     uint8_t pose, flip, left, right, i, first, last, base, pal, k;
