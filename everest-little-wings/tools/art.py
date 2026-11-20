@@ -59,6 +59,10 @@ THEMES=[
  ['252340','493552','714761','985b70','bd777d','dda198','f2c4ac','ffe0a0','d37668','efa27c'],
  ['1b203b','2e3455','4a4d75','555a86','736e97','9889a7','bbb9ce','eae4d4','ba7d85','dfa28c'],
  ['11182f','202c4a','334565','475c82','5b7493','8c9db8','c0d1de','edf4df','bb8378','dca389']]
+BASE_CAMP_TENT_PALETTE = 5
+BASE_CAMP_TENT_Y = 136
+BASE_CAMP_TENT_WIDTH = 40
+
 TITLE=['102c38','1c414a','315c61','507c7b','7fa5a0','a9c6af','dce2bb','ffe7a4','d77f59','f5ad63']
 def ridge(points, rng, rough):
     line=[]
@@ -79,18 +83,12 @@ def landscape(zone, title=False, end=False):
     sky=H//3
     for x in range(0,160,2):
         d.point((x,sky),cs[4])
-    sx=(37 if end else 128) if title else [25,42,64,86,108,136,121,94][zone]
-    sy=59 if title else [68,49,34,29,43,66,44,33][zone]
-    r=13 if title else 11
-    d.ellipse((sx-r,sy-r,sx+r,sy+r),cs[7])
-    if zone>=6 and not title:
-        d.ellipse((sx-r+5,sy-r-2,sx+r+5,sy+r-2),cs[3])
-        for _ in range(21):
-            x,y=rng.randrange(3,157),rng.randrange(16,53)
-            if abs(x-sx)>15:d.point((x,y),cs[7 if rng.randrange(4)==0 else 5])
-    else:
-        for strip in (6,10):
-            d.line((sx-r,sy+strip,sx+r,sy+strip),cs[4])
+    if title:
+        sx, sy = (37 if end else 128), 59
+        radius = 13
+        d.ellipse((sx-radius, sy-radius, sx+radius, sy+radius), cs[7])
+        for strip in (6, 10):
+            d.line((sx-radius, sy+strip, sx+radius, sy+strip), cs[4])
     for j in range(6):
         x=rng.randrange(-15,153); y=rng.randrange(38,78)
         d.line((x,y,x+rng.randrange(7,29),y),cs[5])
@@ -124,42 +122,18 @@ def landscape(zone, title=False, end=False):
     fy=122 if title else 160
     front=ridge([(-1,fy-9),(22,fy-19),(33,fy-13),(48,fy-10),(65,fy+1),(92,fy+5),(110,fy-2),(129,fy-9),(150,fy-16),(162,fy-13)],rng,2)
     d.polygon(front+[(160,H),(0,H)],fill=cs[1])
-    # Landmark silhouettes give each section its own horizon.
-    if not title and zone==1:
-        for x,y,w in [(0,107,16),(15,118,15),(135,114,14),(149,100,12)]:
-            d.polygon([(x-6,H),(x,y+9),(x+4,y),(x+w,y+4),(x+w-1,y+18),(x+w+4,H)],fill=cs[3])
-            d.polygon([(x,y+9),(x+4,y),(x+w,y+4),(x+w-5,y+6),(x+1,y+5)],fill=cs[6])
-            d.line([(x+4,y+7),(x+3,y+16),(x+6,y+25)],fill=cs[4])
-    if not title and zone==2:
-        d.polygon([(64,141),(91,135),(81,141),(111,144),(76,151),(108,161),(85,176),(50,176),(76,161),(51,151),(83,146)],fill=cs[4])
-        d.line([(80,139),(88,139),(78,142),(101,145),(67,150)],fill=cs[5])
-    if not title and zone in (3,4):
-        wall=[(126,176),(123,152),(131,138),(129,129),(140,109),(143,95),(153,83),(160,70),(160,176)]
-        d.polygon(wall,fill=cs[2])
-        for dx,dy in [(134,146),(147,113),(154,95)]:
-            d.line([(dx,dy),(dx+4,dy-10),(dx+9,dy-15)],fill=cs[4])
-        if zone==4:
-            d.polygon([(128,139),(140,132),(146,119),(159,113),(159,119),(148,125),(142,137),(125,147)],fill=cs[8])
-            d.line([(136,137),(143,133),(148,123),(157,120)],fill=cs[9])
-    if not title and zone==5:
-        d.line([(0,123),(21,132),(43,136),(59,138)],fill=cs[1])
-        for j,(x,y) in enumerate([(3,125),(13,129),(24,133),(35,135),(46,137)]):
-            d.polygon([(x,y),(x+6,y+2),(x+4,y+7),(x,y+5)],fill=cs[[8,5,3,9,4][j]])
-    if not title and zone in (6,7):
-        for j in range(2 if zone==6 else 4):
-            yy=132+j*7
-            pts=[(x,yy+int(3*math.sin(x*0.08+j)+2*math.cos(x*.18))) for x in range(-2,164,2)]
-            d.polygon(pts+[(162,H),(-2,H)],fill=cs[3 if j%2==0 else 4])
-        for j in range(4):
-            x=px+4+j*3;y=py-1-j//2
-            d.line((x,y,x+9-j,y),fill=cs[5])
     if not title and zone==0:
         # The full-width base is the only unbroken floor on the route.
         d.rectangle((0,152,159,175),cs[1]);d.rectangle((0,152,159,154),cs[6]);d.line((0,155,159,155),cs[3])
         for x in range(1,160,7):
             y=rng.randrange(157,174);d.line((x,y,x+2,y-1),cs[2])
-        d.polygon([(6,151),(15,138),(25,151)],fill=cs[8]);d.polygon([(15,139),(16,151),(25,151)],fill=cs[9])
-        d.polygon([(14,146),(11,151),(16,151)],fill=cs[0]);d.line((28,150,28,137),cs[1]);d.polygon([(29,137),(37,138),(29,141)],fill=cs[8])
+        # Draw the tent, its doorway, and the flag with one four-color palette.
+        d.polygon([(4,151), (14,137), (19,138), (28,151)], fill=cs[0])
+        d.polygon([(6,150), (14,139), (22,150)], fill=cs[9])
+        d.polygon([(15,138), (18,139), (26,150), (23,150)], fill=cs[8])
+        d.polygon([(11,150), (14,144), (18,150)], fill=cs[0])
+        d.line((32,150,32,141), fill=cs[0])
+        d.polygon([(33,141), (38,142), (33,145)], fill=cs[8])
     if title:
         # Original large, scarf-wearing duck on the overlook.
         lay=duck_pixels(0)
@@ -202,14 +176,19 @@ def compile_scene(name, im, cols, bank):
         for x in range(0,im.width,8):
             a=pix[y:y+8,x:x+8]
             dist=((a[None,:,:,None,:]-pal[:,None,None,:,:])**2).sum(axis=4)
-            which=int(dist.min(axis=3).sum(axis=(1,2)).argmin()); packed=bits(dist[which].argmin(axis=2))
+            if name == 'scene0' and x < BASE_CAMP_TENT_WIDTH and BASE_CAMP_TENT_Y <= y < 152:
+                # Across its tile boundaries the fabric and outline must keep their colors.
+                which = BASE_CAMP_TENT_PALETTE
+            else:
+                which = int(dist.min(axis=3).sum(axis=(1,2)).argmin())
+            packed = bits(dist[which].argmin(axis=2))
             if packed not in choices: choices[packed]=len(patterns);patterns.append(packed)
             idx=choices[packed]
             assert idx<256,(name,idx)
             indices.append(idx if idx<256 else idx-256+128)
             attrs.append(which|(8 if idx<256 else 0))
     def decl(n,vs,t='unsigned char'):return emit(name+n,vs,t)
-    code=f'#pragma bank {bank}\n'+decl('_tiles',b''.join(patterns))+decl('_map',indices)+decl('_attr',attrs)+decl('_altmap',[v&127 for v in indices])+decl('_altattr',[a if t<128 else a&7 for t,a in zip(indices,attrs)])+decl('_pals',[cgb(c) for p in pals for c in p],'unsigned short')
+    code=f'#pragma bank {bank}\n'+decl('_tiles',b''.join(patterns))+decl('_map',indices)+decl('_attr',attrs)+decl('_pals',[cgb(c) for p in pals for c in p],'unsigned short')
     (OUT/(name+'.c')).write_text(code)
     return name,len(patterns),im.height//8,bank
 # The scarf overlay has an independent palette. Rotate the head and feet around the body for tumbles.
@@ -304,15 +283,41 @@ def sprites():
     sym('icicle',['00111100','01233210','01232210','00132100','00132100','00031000','00031000','00010000'])
     sym('warn',['00010000','00030000','00030000','00000000','00030000'])
     sym('gust',['00000000','00000000','00222200','00000320','03333300','00000000','00222000'])
+    # The sun and moon share the duck's cream palette entry.
+    disc = Image.new('L', (16,16))
+    draw = ImageDraw.Draw(disc)
+    draw.ellipse((1,1,14,14), fill=2)
+    col('sun', np.array(disc))
+    draw.ellipse((6,-1,17,10), fill=0)
+    col('moon', np.array(disc))
     return art,desc
 
 def main():
-    scene_info=[compile_scene('scene'+str(i),*landscape(i),i+1) for i in range(8)]
-    scene_info += [compile_scene('cover',*landscape(0,True),9),compile_scene('ending',*landscape(7,True,True),10)]
-    hdr='/* Cartridge assets generated by tools/art.py. */\n'
+    scene_info = [
+        compile_scene('scene0', *landscape(0), 1),
+        compile_scene('cover', *landscape(0, True), 9),
+        compile_scene('ending', *landscape(7, True, True), 10),
+    ]
+    # Interpolate on the RGB555 ladder and precompute the 128 palette steps.
+    # The runtime streams one row from ROM each time the clock advances a step.
+    sky = []
+    for step in range(128):
+        key, fraction = divmod(step, 16)
+        before = palettes(THEMES[key])
+        after = palettes(THEMES[(key+1) % len(THEMES)])
+        for left, right in zip(before, after):
+            for a, b in zip(left, right):
+                ca, cb = cgb(a), cgb(b)
+                color = 0
+                for shift in (0, 5, 10):
+                    start, end = (ca >> shift) & 31, (cb >> shift) & 31
+                    color |= ((start*(16-fraction) + end*fraction + 8) >> 4) << shift
+                sky.append(color)
+    (OUT/'sky.c').write_text('#pragma bank 12\n'+emit('sky_palettes', sky, 'unsigned short'))
+    hdr='/* Cartridge assets generated by tools/art.py. */\nextern const unsigned short sky_palettes[];\n'
     for name,n,h,b in scene_info:
-        hdr+=f'extern const unsigned char {name}_tiles[], {name}_map[], {name}_attr[], {name}_altmap[], {name}_altattr[];\nextern const unsigned short {name}_pals[];\n'
-    hdr+='#define SCENE_TABLE { '+', '.join('{%d,%d,%d,%s_tiles,%s_map,%s_attr,%s_altmap,%s_altattr,%s_pals}'%(b,n,h,nm,nm,nm,nm,nm,nm) for nm,n,h,b in scene_info)+' }\n'
+        hdr+=f'extern const unsigned char {name}_tiles[], {name}_map[], {name}_attr[];\nextern const unsigned short {name}_pals[];\n'
+    hdr+='#define SCENE_TABLE { '+', '.join('{%d,%d,%d,%s_tiles,%s_map,%s_attr,%s_pals}'%(b,n,h,nm,nm,nm,nm) for nm,n,h,b in scene_info)+' }\n'
     atlas,symbols=sprites()
     # The title duck uses high tiles in bank one, above the backdrop.
     (OUT/'sprites.c').write_text('#pragma bank 11\n'+emit('sprite_tiles',b''.join(atlas)) + emit('title_duck_tiles', b''.join(title_duck_tiles())))

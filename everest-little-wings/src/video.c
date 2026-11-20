@@ -5,7 +5,7 @@ typedef struct {
     uint8_t bank;
     uint16_t tiles;
     uint8_t rows;
-    const uint8_t *data, *map, *attr, *altmap, *altattr;
+    const uint8_t *data, *map, *attr;
     const uint16_t *pal;
 } Scene;
 static const Scene scenes[] = SCENE_TABLE;
@@ -65,7 +65,7 @@ static void menu_action(uint8_t y, const char *button, const char *action) {
     row_text(row + 8, action, 12, 0);
     set_win_tiles(0, y, 20, 1, row);
 }
-static uint8_t alternate_map;
+static uint8_t sky_step = NONE;
 static void window_attrs(uint8_t rows) {
     uint8_t attrs[20], i;
     memset(attrs, 0x87, 20);
@@ -77,35 +77,20 @@ static void window_attrs(uint8_t rows) {
 static void draw_title_duck(void);
 
 void activate_scene(uint8_t n) {
-    const Scene *s = &scenes[n];
-    uint8_t moving = (loaded < 8u && n < 8u);
-    uint8_t *map_addr;
     if (loaded == n)
         return;
-    if (!moving) {
-        DISPLAY_OFF;
-        HIDE_SPRITES;
-        HIDE_WIN;
-    }
-    alternate_map = moving ? !alternate_map : 0;
-    map_addr = (uint8_t *)(alternate_map ? 0x9c00u : 0x9800u);
-    SWITCH_ROM(s->bank);
-    if (alternate_map) {
-        /* Positive signed tile IDs select the unused upper 2 KiB of each VRAM bank. */
-        VBK_REG = 1;
-        set_data((uint8_t *)0x9000, s->data, (s->tiles < 128u ? s->tiles : 128u) * 16u);
-        if (s->tiles > 128u) {
-            VBK_REG = 0;
-            set_data((uint8_t *)0x9000, s->data + 2048u, (s->tiles - 128u) * 16u);
-        }
-    } else {
-        VBK_REG = 1;
-        set_sprite_data(0, (uint8_t)s->tiles, s->data);
-    }
+    const Scene *scene = &scenes[n];
+    const uint8_t map_row = n == SCENE_MOUNTAIN ? 2 : 0;
+    DISPLAY_OFF;
+    HIDE_SPRITES;
+    HIDE_WIN;
+    LCDC_REG = (LCDC_REG & (uint8_t)~LCDCF_BG9C00) | LCDCF_BG8000 | LCDCF_WIN9C00;
+    SWITCH_ROM(scene->bank);
     VBK_REG = 1;
-    set_tiles(0, n < 8 ? 2 : 0, 20, s->rows, map_addr, alternate_map ? s->altattr : s->attr);
+    set_sprite_data(0, (uint8_t)scene->tiles, scene->data);
+    set_bkg_tiles(0, map_row, 20, scene->rows, scene->attr);
     VBK_REG = 0;
-    set_tiles(0, n < 8 ? 2 : 0, 20, s->rows, map_addr, alternate_map ? s->altmap : s->map);
+    set_bkg_tiles(0, map_row, 20, scene->rows, scene->map);
     if (loaded == NONE) {
         SWITCH_ROM(11);
         set_sprite_data(0, SPRITE_COUNT, sprite_tiles);
@@ -115,41 +100,28 @@ void activate_scene(uint8_t n) {
         VBK_REG = 0;
         set_sprite_palette(0, 8, obj_pals);
         SPRITES_8x16;
-        SWITCH_ROM(s->bank);
+        SWITCH_ROM(scene->bank);
     }
-    if (moving)
-        vsync();
-    if (alternate_map) {
-        const unsigned keep = (uint8_t)~(LCDCF_WIN9C00 | LCDCF_BG8000);
-        LCDC_REG = (LCDC_REG & keep) | (unsigned)(LCDCF_WIN9C00 | LCDCF_BG9C00);
-    } else {
-        const unsigned keep = (uint8_t)~(LCDCF_WIN9C00 | LCDCF_BG8000 | LCDCF_BG9C00);
-        LCDC_REG = (LCDC_REG & keep) |
-                   (n < 8 ? (unsigned)LCDCF_BG8000 : (unsigned)(LCDCF_BG8000 | LCDCF_WIN9C00));
-    }
-    set_bkg_palette(0, 8, s->pal);
+    set_bkg_palette(0, 8, scene->pal);
     loaded = n;
     move_bkg(0, 0);
     SHOW_BKG;
-    if (n < 8) {
+    window_attrs(18);
+    if (n == SCENE_MOUNTAIN) {
+        sky_step = NONE;
         last_status = UINT32_MAX;
-        window_attrs(1);
         draw_world();
         draw_status();
         SHOW_SPRITES;
     } else {
-        uint8_t i;
-        window_attrs(18);
-        for (i = 0; i < 40; i++)
+        for (uint8_t i = 0; i < 40; ++i)
             hide_sprite(i);
-        if (n == 8) {
+        if (n == SCENE_TITLE) {
             draw_title_duck();
             SHOW_SPRITES;
         }
     }
-    if (!moving) {
-        DISPLAY_ON;
-    }
+    DISPLAY_ON;
 }
 static void obj(int16_t x, int16_t y, uint8_t tile, uint8_t attr) {
     if (oam >= 40 || x <= -8 || x >= 160 || y <= -16 || y >= 144)
@@ -174,11 +146,33 @@ static void draw_title_duck(void) {
     }
 }
 
+static void draw_sky(void) {
+    /* One cycle per 4096 elapsed frames in Timed, or 4096 meters in Hard. */
+    const uint16_t phase = (hard_mode ? hard_camera_height() : (uint16_t)run_frames) & 4095u;
+    const uint8_t step = phase >> 5;
+    if (step != sky_step) {
+        uint8_t previous_bank = CURRENT_BANK;
+        SWITCH_ROM(12);
+        set_bkg_palette(0, 8, sky_palettes + (uint16_t)step * 32u);
+        SWITCH_ROM(previous_bank);
+        sky_step = step;
+    }
+    const uint8_t moon = phase >= 3072u;
+    /* Let each disc travel a full arc and pass beyond the screen edges. */
+    const uint16_t distance = moon ? phase - 3072u : phase;
+    const int16_t x = moon ? ((distance * 11u) >> 6) - 16
+                           : ((distance * 11u) / 192u) - 16;
+    const uint8_t tile = moon ? TILE_moon : TILE_sun;
+    const int16_t y = 5 + ((x < 72 ? 72 - x : x - 72) >> 2);
+    obj(x, y, tile, 0);
+    obj(x + 8, y, tile + 2, 0);
+}
+
 void draw_world(void) {
     int16_t px = x16 >> 4, py = 120 + cam - h, sy;
     uint8_t pose, flip, left, right, i, first, last, base, pal, k;
-    if (loaded != zone) {
-        activate_scene(zone);
+    if (loaded != SCENE_MOUNTAIN) {
+        activate_scene(SCENE_MOUNTAIN);
         return;
     }
     oam = 0;
@@ -241,16 +235,11 @@ void draw_world(void) {
             obj(wind < 0 ? 160 - gx : gx, gy, TILE_gust, 7 | (wind < 0 ? DUCK_FLIP : 0u));
         }
     }
+    draw_sky();
     for (i = oam; i < 40; i++)
         hide_sprite(i);
-    if (!zone)
-        move_bkg(0, cam < 32 ? 48 - cam : 16);
-    else if (hard_mode)
-        move_bkg(0, 16);
-    else {
-        int16_t dy = h - camp_alt[zone];
-        move_bkg(0, dy < 0 ? 48 : (dy >= 512 ? 16 : 48 - (dy >> 4)));
-    }
+    /* Let the campsite scroll away at takeoff, then keep the same mountain fixed. */
+    move_bkg(0, cam < 32 && (!hard_mode || hard_height < 160u) ? 48 - cam : 16);
 }
 static void time_row(uint8_t row, const char *label, uint32_t seconds) {
     uint32_t minutes = seconds / 60u;
@@ -283,10 +272,6 @@ void draw_status(void) {
     if (value == last_status)
         return;
     last_status = value;
-    if (alternate_map)
-        LCDC_REG |= (unsigned)LCDCF_WIN9C00;
-    else
-        LCDC_REG &= (unsigned)(uint8_t)~LCDCF_WIN9C00;
     move_win(7, 136);
     if (hard_mode)
         height_row(0, "HEIGHT", value);
@@ -296,13 +281,6 @@ void draw_status(void) {
 }
 void panel(uint8_t kind) {
     last_status = UINT32_MAX;
-    if (loaded < 8) {
-        if (alternate_map)
-            LCDC_REG &= (unsigned)(uint8_t)~LCDCF_WIN9C00;
-        else
-            LCDC_REG |= (unsigned)LCDCF_WIN9C00;
-        window_attrs(8);
-    }
     switch (kind) {
     case TITLE:
         move_win(7, 120);

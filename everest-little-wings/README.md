@@ -36,7 +36,7 @@ The camera rises on its own. Catch another ledge before the duck drops below the
 
 ## Art and music
 
-The ascent takes the scenery from dawn through midday, sunset, and moonlight. Hard mode repeats the sky cycle as you climb. The editable [duck sprite](art/duck.aseprite) has separate body and scarf layers and tags for idle, walk, jump, flap, and tumble.
+The mountain backdrop stays in place as the sun moves and the colors change from dawn through daylight, sunset, and moonlight. Timed mode follows the elapsed timer. Hard mode follows the rising camera. The editable [duck sprite](art/duck.aseprite) has separate body and scarf layers and tags for idle, walk, jump, flap, and tumble.
 
 The soundtrack cycles through three new Game Boy arrangements of traditional melodies. Hard mode increases their tempo as the camera speeds up.
 

@@ -73,7 +73,7 @@ void commit_save(void) {
 }
 void show_title(void) {
     game_mode = TITLE;
-    activate_scene(8);
+    activate_scene(SCENE_TITLE);
     panel(TITLE);
 }
 void finish(void) {
@@ -94,7 +94,7 @@ void finish(void) {
     }
     game_mode = WIN;
     commit_save();
-    activate_scene(9);
+    activate_scene(SCENE_SUMMIT);
     HIDE_SPRITES;
     panel(WIN);
     sound(6);
@@ -109,7 +109,7 @@ static void enter(uint8_t fresh) {
     full_run = camp == 0;
     game_mode = PLAY;
     reset_at(camp);
-    activate_scene(zone);
+    activate_scene(SCENE_MOUNTAIN);
     draw_world();
     draw_status();
     SHOW_SPRITES;
@@ -119,7 +119,7 @@ static void enter(uint8_t fresh) {
 static void enter_hard(void) {
     reset_hard(sys_time ^ ((uint16_t)DIV_REG << 8));
     game_mode = PLAY;
-    activate_scene(zone);
+    activate_scene(SCENE_MOUNTAIN);
     draw_world();
     draw_status();
     SHOW_SPRITES;

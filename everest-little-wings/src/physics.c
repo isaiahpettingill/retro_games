@@ -87,6 +87,10 @@ static void recycle_ledges(void) {
         ground -= RECYCLE;
     generate_ledges(HARD_LEDGES - RECYCLE);
 }
+uint16_t hard_camera_height(void) {
+    return (uint16_t)height_base + cam;
+}
+
 static void hard_camera(void) {
     if (scroll_ticks < 70u)
         ++scroll_ticks;
