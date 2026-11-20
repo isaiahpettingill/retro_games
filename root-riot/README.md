@@ -50,6 +50,7 @@ The build creates `release/RootRiot.nes`. If the linker cannot locate the cc65 N
 | --- | --- |
 | `src/game.c` | Movement, collisions, combat, boss scripts, co-op recovery, menus, and music |
 | `src/hardware.s` | NES startup, Four Score input, graphics transfers, sprite output, and CHR bank selection |
+| `src/nes.inc` | PPU and APU register names and ca65 macros for tile uploads and controller reads |
 | `src/art.py` | Original pixel art, font, terrain, scenery, and sprite tiles |
 | `src/menus.py` | Title art, crew portraits, field guide, and menu screen maps |
 | `src/world.py` | Course layouts, enemy placements, platforms, vines, hazards, and checkpoints |

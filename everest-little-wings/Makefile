@@ -14,13 +14,12 @@ build/%.o: %.c art/assets.h src/game.h art/course.inc
 art:
 	python3 tools/art.py
 	python3 tools/course.py
-check-route:
-	@mkdir -p build/checks
-	$(CC) -O2 -std=c99 -Ichecks/host -Iart checks/course.c -o build/checks/course
-	./build/checks/course
-check-hard:
-	@mkdir -p build/checks
-	$(CC) -O2 -std=c99 -Ichecks/host -Iart checks/endless.c -o build/checks/endless
-	./build/checks/endless
+check-route: build/checks/course
+	./$<
+check-hard: build/checks/endless
+	./$<
+build/checks/%: checks/%.c src/physics.c src/game.h art/course.inc $(wildcard checks/host/gb/*.h)
+	@mkdir -p $(dir $@)
+	$(CC) -O2 -std=c99 -Ichecks/host -Iart $< -o $@
 clean:
 	rm -rf build
