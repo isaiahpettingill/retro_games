@@ -147,8 +147,9 @@ static void draw_title_duck(void) {
 }
 
 static void draw_sky(void) {
-    /* One cycle per 4096 elapsed frames in Timed, or 4096 meters in Hard. */
-    const uint16_t phase = (hard_mode ? hard_camera_height() : (uint16_t)run_frames) & 4095u;
+    /* One cycle per 16384 elapsed frames in Timed, or 16384 meters in Hard. */
+    const uint16_t clock = hard_mode ? hard_camera_height() : (uint16_t)run_frames;
+    const uint16_t phase = (clock >> 2) & 4095u;
     const uint8_t step = phase >> 5;
     if (step != sky_step) {
         uint8_t previous_bank = CURRENT_BANK;

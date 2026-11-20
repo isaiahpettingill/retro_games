@@ -6,7 +6,7 @@ extern const unsigned char cover_tiles[], cover_map[], cover_attr[];
 extern const unsigned short cover_pals[];
 extern const unsigned char ending_tiles[], ending_map[], ending_attr[];
 extern const unsigned short ending_pals[];
-#define SCENE_TABLE { {1,171,22,scene0_tiles,scene0_map,scene0_attr,scene0_pals}, {9,176,18,cover_tiles,cover_map,cover_attr,cover_pals}, {10,201,18,ending_tiles,ending_map,ending_attr,ending_pals} }
+#define SCENE_TABLE { {1,169,22,scene0_tiles,scene0_map,scene0_attr,scene0_pals}, {9,176,18,cover_tiles,cover_map,cover_attr,cover_pals}, {10,201,18,ending_tiles,ending_map,ending_attr,ending_pals} }
 extern const unsigned char title_duck_tiles[];
 extern const unsigned char sprite_tiles[];
 #define SPRITE_COUNT 142

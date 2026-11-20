@@ -59,10 +59,6 @@ THEMES=[
  ['252340','493552','714761','985b70','bd777d','dda198','f2c4ac','ffe0a0','d37668','efa27c'],
  ['1b203b','2e3455','4a4d75','555a86','736e97','9889a7','bbb9ce','eae4d4','ba7d85','dfa28c'],
  ['11182f','202c4a','334565','475c82','5b7493','8c9db8','c0d1de','edf4df','bb8378','dca389']]
-BASE_CAMP_TENT_PALETTE = 5
-BASE_CAMP_TENT_Y = 136
-BASE_CAMP_TENT_WIDTH = 40
-
 TITLE=['102c38','1c414a','315c61','507c7b','7fa5a0','a9c6af','dce2bb','ffe7a4','d77f59','f5ad63']
 def ridge(points, rng, rough):
     line=[]
@@ -127,13 +123,6 @@ def landscape(zone, title=False, end=False):
         d.rectangle((0,152,159,175),cs[1]);d.rectangle((0,152,159,154),cs[6]);d.line((0,155,159,155),cs[3])
         for x in range(1,160,7):
             y=rng.randrange(157,174);d.line((x,y,x+2,y-1),cs[2])
-        # Draw the tent, its doorway, and the flag with one four-color palette.
-        d.polygon([(4,151), (14,137), (19,138), (28,151)], fill=cs[0])
-        d.polygon([(6,150), (14,139), (22,150)], fill=cs[9])
-        d.polygon([(15,138), (18,139), (26,150), (23,150)], fill=cs[8])
-        d.polygon([(11,150), (14,144), (18,150)], fill=cs[0])
-        d.line((32,150,32,141), fill=cs[0])
-        d.polygon([(33,141), (38,142), (33,145)], fill=cs[8])
     if title:
         # Original large, scarf-wearing duck on the overlook.
         lay=duck_pixels(0)
@@ -176,11 +165,7 @@ def compile_scene(name, im, cols, bank):
         for x in range(0,im.width,8):
             a=pix[y:y+8,x:x+8]
             dist=((a[None,:,:,None,:]-pal[:,None,None,:,:])**2).sum(axis=4)
-            if name == 'scene0' and x < BASE_CAMP_TENT_WIDTH and BASE_CAMP_TENT_Y <= y < 152:
-                # Across its tile boundaries the fabric and outline must keep their colors.
-                which = BASE_CAMP_TENT_PALETTE
-            else:
-                which = int(dist.min(axis=3).sum(axis=(1,2)).argmin())
+            which = int(dist.min(axis=3).sum(axis=(1,2)).argmin())
             packed = bits(dist[which].argmin(axis=2))
             if packed not in choices: choices[packed]=len(patterns);patterns.append(packed)
             idx=choices[packed]
