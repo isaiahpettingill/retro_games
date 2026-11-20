@@ -250,7 +250,8 @@ def duck_pixels(pose):
 def title_duck_tiles():
     """Scale the idle body and scarf exactly, preserving the gameplay palette indices."""
     idle = duck_pixels(0)
-    body = np.where(idle == 4, 1, idle)
+    # Transparent body pixels let the scarf show with either CGB sprite priority mode.
+    body = np.where(idle == 4, 0, idle)
     scarf = np.where(idle[:, 4:12] == 4, 1, 0)
     tiles = []
     for layer in (body, scarf):
